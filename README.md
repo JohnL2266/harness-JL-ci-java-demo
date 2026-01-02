@@ -66,90 +66,59 @@ A successful build produces a JAR file in the target/ directory.
 
 Docker
 Build Image Locally (Optional)
-bash
-Copy code
 docker build -t harness-ci-java-demo:latest .
+
 The image uses a lightweight Eclipse Temurin Java 17 runtime and mirrors the image built in the CI pipeline.
 
 Harness CI Pipeline
-The CI stage performs the following:
-
-Clones the GitHub repository
-
-Runs unit tests (mvn test)
-
-Packages the application (mvn package)
-
-Builds a Docker image
-
-Pushes the image to Docker Hub
-
+The CI stage performs the following steps:
+Clone the GitHub repository
+Run unit tests (mvn test)
+Package the application (mvn package)
+Build a Docker image
+Push the image to Docker Hub
 The CI pipeline runs on Kubernetes-based build infrastructure using a Harness Delegate.
 
 Harness CD Pipeline
 The CD stage deploys the application to Kubernetes using manifests stored in this repository.
-
 Deployment Strategy
 Canary Deployment
 Deploys a subset of replicas
-
-Runs a verification step
-
+Executes a verification step
 Automatically deletes canary resources after validation
-
 Primary Deployment
-Performs a rolling update to promote the release
-
+Promotes the release using a rolling deployment strategy
 Kubernetes manifests are sourced from the k8s/ directory in GitHub.
 
 Canary Verification Template (Bonus)
 As part of the bonus objective, the Verify Canary step was templatized and reused within the pipeline.
-
 This demonstrates one of Harness’s key value propositions:
-
 Reusable, versioned pipeline components
-
 Consistent deployment verification logic
-
 Reduced duplication across services and pipelines
 
 Accessing the Application
 The Kubernetes Service is deployed as a ClusterIP service.
-
 To access the application locally:
-
-bash
-Copy code
 kubectl port-forward svc/harness-ci-lab 8080:80
 Then visit:
-
-arduino
-Copy code
 http://localhost:8080
+
+
 Technologies Used
 Java 17 (Eclipse Temurin)
-
 Apache Maven
-
 JUnit
-
 Docker
-
 Kubernetes
-
 Harness CI
-
 Harness CD
 
 Purpose
 This project was created as a Harness CI/CD lab exercise to demonstrate:
-
-CI pipelines on Kubernetes infrastructure
-
+CI pipelines running on Kubernetes infrastructure
 Container image creation and publishing
-
 Kubernetes-based deployments with canary strategies
-
 Pipeline reusability through templating
 
 Author
