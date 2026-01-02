@@ -1,4 +1,7 @@
 FROM eclipse-temurin:11-jre
 WORKDIR /app
-COPY target/harness-ci-lab-1.0-SNAPSHOT.jar app.jar
+
+# We always build to target/app.jar via the pom.xml finalName above
+COPY target/app.jar app.jar
+
 ENTRYPOINT ["java","-jar","app.jar"]
