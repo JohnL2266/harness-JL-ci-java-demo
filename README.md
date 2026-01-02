@@ -56,18 +56,7 @@ Copy code
 
 ### Run Unit Tests
 
-```bash
-mvn test
 
----
-
-Build the Application
-bash
-Copy code
-mvn package
-A successful build produces a JAR file in the target/ directory.
-
-Docker
 Build Image Locally (Optional)
 docker build -t harness-ci-java-demo:latest .
 
