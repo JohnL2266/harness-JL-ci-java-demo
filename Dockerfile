@@ -1,7 +1,11 @@
 FROM eclipse-temurin:11-jre
+
 WORKDIR /app
 
-# We always build to target/app.jar via the pom.xml finalName above
-COPY target/app.jar app.jar
+# Copy the shaded/fat JAR produced by Maven Shade
+COPY target/*-shaded.jar /app/app.jar
 
-ENTRYPOINT ["java","-jar","app.jar"]
+EXPOSE 8080
+ENV PORT=8080
+
+ENTRYPOINT ["java","-jar","/app/app.jar"]
