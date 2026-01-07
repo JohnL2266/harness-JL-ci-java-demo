@@ -47,4 +47,39 @@ public class AppTest {
                 "Pirate greeting should include 'Ahoy, John'"
         );
     }
+
+    // ------------------------------------------------------------
+    // Test: greeting includes CI/CD metadata fields
+    // ------------------------------------------------------------
+    @Test
+    public void greetingIncludesMetadata() {
+
+        // Arrange
+        App app = new App();
+
+        // Act
+        String greeting = app.getGreetingForTest("Alice", "normal");
+
+        // Assert: verify CI/CD-relevant metadata is present
+        assertTrue(
+                greeting.contains("Version:"),
+                "Greeting should include version info"
+        );
+        assertTrue(
+                greeting.contains("Git SHA:"),
+                "Greeting should include git commit SHA"
+        );
+        assertTrue(
+                greeting.contains("Greeting Mode:"),
+                "Greeting should include greeting mode information"
+        );
+        assertTrue(
+                greeting.contains("Pod:"),
+                "Greeting should include pod name"
+        );
+        assertTrue(
+                greeting.contains("Instance:"),
+                "Greeting should include instance ID"
+        );
+    }
 }

@@ -36,6 +36,10 @@ public class App {
     private final String gitSha =
             System.getenv().getOrDefault("GIT_SHA", "unknown");
 
+    // Pod name (in K8s, HOSTNAME = pod name; otherwise "local")
+    private final String podName =
+            System.getenv().getOrDefault("HOSTNAME", "local");
+
     // Unique ID per running instance (useful in K8s / multi-replica scenarios)
     private final String instanceId = UUID.randomUUID().toString();
 
@@ -132,6 +136,34 @@ public class App {
             trackAndRespond(ex, 200, "text/plain; charset=utf-8", body);
         });
 
+        // Chaos endpoint: simulate failures for testing K8s self-healing
+        server.createContext("/chaos", ex -> {
+            String action = queryParam(ex, "action", "");
+
+            if ("enable".equals(action)) {
+                // Enable chaos mode (app continues running but in degraded state)
+                mode = "chaos";
+                trackAndRespond(ex, 200, "text/plain; charset=utf-8", "Chaos mode enabled\n");
+
+            } else if ("disable".equals(action)) {
+                // Disable chaos mode (return to normal)
+                mode = "normal";
+                trackAndRespond(ex, 200, "text/plain; charset=utf-8", "Chaos mode disabled\n");
+
+            } else if ("crash".equals(action)) {
+                // Simulate a crash (K8s will restart the pod)
+                trackAndRespond(ex, 200, "text/plain; charset=utf-8", "Crashing in 2 seconds...\n");
+                new Thread(() -> {
+                    try { Thread.sleep(2000); } catch (Exception ignored) {}
+                    System.exit(1);
+                }).start();
+
+            } else {
+                // Default: return 503 Service Unavailable (triggers health check failures)
+                trackAndRespond(ex, 503, "text/plain; charset=utf-8", "Service degraded (chaos mode)\n");
+            }
+        });
+
         // Default executor is fine for a demo
         server.setExecutor(null);
 
@@ -155,7 +187,7 @@ public class App {
                 ? "Ahoy, " + name + "! 🏴‍☠️"
                 : "Hello, " + name + "! 👋";
 
-        // Multi-line, readable “verification-style” output for demos
+        // Multi-line, readable "verification-style" output for demos
         return opening + "\n"
                 + "You are visitor #" + visitorNumber + "\n"
                 + "Service: " + serviceName + "\n"
@@ -163,6 +195,7 @@ public class App {
                 + "App Mode: " + mode + "\n"
                 + "Version: " + version + "\n"
                 + "Git SHA: " + gitSha + "\n"
+                + "Pod: " + podName + "\n"
                 + "Instance: " + instanceId.substring(0, 8) + "\n"
                 + "Uptime: " + uptimeSeconds + "s\n";
     }
@@ -185,8 +218,8 @@ public class App {
         long uptime = Duration.between(startedAt, Instant.now()).getSeconds();
 
         return String.format(
-                "{\"service\":\"%s\",\"version\":\"%s\",\"gitSha\":\"%s\",\"instanceId\":\"%s\",\"uptimeSeconds\":%d,\"mode\":\"%s\"}\n",
-                serviceName, version, gitSha, instanceId, uptime, mode
+                "{\"service\":\"%s\",\"version\":\"%s\",\"gitSha\":\"%s\",\"podName\":\"%s\",\"instanceId\":\"%s\",\"uptimeSeconds\":%d,\"mode\":\"%s\"}\n",
+                serviceName, version, gitSha, podName, instanceId, uptime, mode
         );
     }
 
@@ -232,6 +265,7 @@ public class App {
             + "    code { background: #f6f6f6; padding: 2px 6px; border-radius: 6px; }\n"
             + "    input, select { padding: 8px; border-radius: 8px; border: 1px solid #ccc; margin-right: 8px; }\n"
             + "    button { padding: 8px 12px; border-radius: 8px; border: 1px solid #4f46e5; background: #4f46e5; color: #fff; cursor: pointer; }\n"
+            + "    button.danger { background: #dc2626; border-color: #dc2626; }\n"
             + "    pre { background:#fafafa; border:1px solid #eee; border-radius:8px; padding:10px; overflow-x:auto; }\n"
             + "    .row { margin: 6px 0; }\n"
             + "    .label { display:inline-block; width: 120px; color:#444; }\n"
@@ -260,6 +294,7 @@ public class App {
             + "      <code>/version</code>\n"
             + "      <code>/metrics</code>\n"
             + "      <code>/greet?name=John&mode=pirate</code>\n"
+            + "      <code>/chaos?action=crash</code>\n"
             + "    </div>\n"
             + "  </div>\n"
             + "\n"
@@ -273,7 +308,7 @@ public class App {
             + "      </select>\n"
             + "      <button onclick=\"greet()\">Greet me</button>\n"
             + "    </div>\n"
-            + "    <pre id=\"greeting\" style=\"margin-top:12px;\">Click “Greet me” to generate a greeting...</pre>\n"
+            + "    <pre id=\"greeting\" style=\"margin-top:12px;\">Click \"Greet me\" to generate a greeting...</pre>\n"
             + "  </div>\n"
             + "\n"
             + "  <div class=\"card\">\n"
@@ -286,6 +321,16 @@ public class App {
             + "    <pre id=\"metrics\">Loading...</pre>\n"
             + "  </div>\n"
             + "\n"
+            + "  <div class=\"card\">\n"
+            + "    <b>Chaos Engineering (K8s Demo)</b>\n"
+            + "    <div style=\"margin-top:10px;\">\n"
+            + "      <button class=\"danger\" onclick=\"chaos('crash')\">💥 Crash Pod</button>\n"
+            + "      <button class=\"danger\" onclick=\"chaos('enable')\">⚠️ Enable Chaos</button>\n"
+            + "      <button onclick=\"chaos('disable')\">✅ Disable Chaos</button>\n"
+            + "    </div>\n"
+            + "    <pre id=\"chaos\" style=\"margin-top:12px;\">Chaos controls allow testing K8s self-healing...</pre>\n"
+            + "  </div>\n"
+            + "\n"
             + "  <div class=\"badge\" id=\"badge\">Visitor #–</div>\n"
             + "\n"
             + "<script>\n"
@@ -295,6 +340,7 @@ public class App {
             + "    '<div class=\"row\"><span class=\"label\">Service:</span> <span class=\"value\">' + v.service + '</span></div>' +\n"
             + "    '<div class=\"row\"><span class=\"label\">Version:</span> <span class=\"value\">' + v.version + '</span></div>' +\n"
             + "    '<div class=\"row\"><span class=\"label\">Git SHA:</span> <span class=\"value\">' + v.gitSha + '</span></div>' +\n"
+            + "    '<div class=\"row\"><span class=\"label\">Pod Name:</span> <span class=\"value\">' + v.podName + '</span></div>' +\n"
             + "    '<div class=\"row\"><span class=\"label\">Instance:</span> <span class=\"value\">' + v.instanceId + '</span></div>' +\n"
             + "    '<div class=\"row\"><span class=\"label\">Uptime:</span> <span class=\"value\">' + v.uptimeSeconds + 's</span></div>' +\n"
             + "    '<div class=\"row\"><span class=\"label\">App Mode:</span> <span class=\"value\">' + v.mode + '</span></div>';\n"
@@ -309,6 +355,12 @@ public class App {
             + "  document.getElementById('greeting').textContent = text;\n"
             + "  const match = text.match(/visitor #(\\d+)/);\n"
             + "  if (match) document.getElementById('badge').textContent = 'Visitor #' + match[1];\n"
+            + "  await refresh();\n"
+            + "}\n"
+            + "\n"
+            + "async function chaos(action) {\n"
+            + "  const text = await (await fetch('/chaos?action=' + action)).text();\n"
+            + "  document.getElementById('chaos').textContent = text;\n"
             + "  await refresh();\n"
             + "}\n"
             + "\n"
