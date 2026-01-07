@@ -6,23 +6,32 @@ metadata:
     app: harness-ci-lab
 spec:
   replicas: 2
+
+  # IMPORTANT: selector must NEVER change once created
+  selector:
+    matchLabels:
+      app: harness-ci-lab
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-  selector:
-    matchLabels:
-      app: harness-ci-lab
+
   template:
     metadata:
       labels:
         app: harness-ci-lab
+        track: stable   # Safe to change (canary/stable/version labels go here)
     spec:
       containers:
         - name: app
           image: jlouro22/harness-ci-lab:latest
           imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8080
+
           env:
             - name: SERVICE_NAME
               value: "harness-ci-lab"
@@ -30,19 +39,19 @@ spec:
               value: "1.0.0"
             - name: GIT_SHA
               value: "unknown"
-          ports:
-            - containerPort: 8080
 
+          # Readiness probe: controls traffic routing
           readinessProbe:
             httpGet:
-              path: /readyz
+              path: /
               port: 8080
             initialDelaySeconds: 3
             periodSeconds: 5
 
+          # Liveness probe: restarts unhealthy containers
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
